@@ -1,9 +1,8 @@
 const express = require("express");
 const router = express.Router();
 const leadRoutes = require("./leadRoutes");
-
-
-console.log("registering /v1/leads");
+const healthRoutes = require("./healthRoutes");
 router.use("/v1/leads", leadRoutes);
+router.use("/v1/health", healthRoutes);
 
 module.exports = router;
