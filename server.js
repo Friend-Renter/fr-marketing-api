@@ -61,7 +61,7 @@ if (process.env.NODE_ENV === "production") {
 
 console.log("mounting routes at /");
 // Mount all routes directly at the root
-app.use("/", routes);
+app.use("/v1", routes);
 
 // Fallback route for React Router
 if (process.env.NODE_ENV === "production") {
@@ -87,3 +87,7 @@ db.once("open", () => {
     console.log(`API server running on port ${PORT}!`);
   });
 });
+
+console.log("routes typeof:", typeof routes);
+console.log("routes keys:", Object.keys(routes || {}));
+
