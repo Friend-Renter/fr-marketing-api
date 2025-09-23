@@ -40,40 +40,16 @@ app.options(/.*/, cors(corsOptions));
 app.use(express.json({ limit: "50mb" })); // Adjust the limit as needed
 app.use(express.urlencoded({ limit: "50mb", extended: true })); // Adjust the limit as needed
 
-// Force HTTPS in production
-if (process.env.NODE_ENV === "production") {
-  app.use((req, res, next) => {
-    if (req.headers["x-forwarded-proto"] !== "https") {
-      return res.redirect(`https://${req.hostname}${req.url}`);
-    }
-    next();
-  });
-}
 
-// Serve static assets if in production
-// if (process.env.NODE_ENV === "production") {
-//   app.use(express.static(path.join(__dirname, "../client/build")));
-// }
-
-// app.get("/", (req, res) => {
-//   res.sendFile(path.join(__dirname, "../client/build/index.html"));
-// });
-
-console.log("mounting routes at /");
-// Mount all routes directly at the root
+// Mount API
+console.log("mounting API routes at /v1");
 app.use("/v1", routes);
 
-// Fallback route for React Router
-if (process.env.NODE_ENV === "production") {
-  app.get("*", (req, res) => {
-    res.sendFile(path.join(__dirname, "../client/build/index.html"));
-  });
-}
-
-// Catch-all for unknown API routes (404)
+// 404 for unknown API routes
 app.use((req, res) => {
   res.status(404).json({ message: "Route not found." });
 });
+
 
 process.on("SIGINT", async () => {
   console.log("Closing server...");
@@ -87,7 +63,3 @@ db.once("open", () => {
     console.log(`API server running on port ${PORT}!`);
   });
 });
-
-console.log("routes typeof:", typeof routes);
-console.log("routes keys:", Object.keys(routes || {}));
-
