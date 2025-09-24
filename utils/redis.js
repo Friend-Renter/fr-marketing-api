@@ -8,18 +8,28 @@ function getRedis() {
     if (!url) throw new Error("Missing REDIS_URL");
     if (!/^redis(s)?:\/\//i.test(url)) {
       throw new Error(
-        `REDIS_URL must start with redis:// or rediss:// (got "${url.slice(0, 16)}...")`
+        `REDIS_URL must start with redis:// or rediss:// (got "${url.slice(
+          0,
+          16
+        )}...")`
       );
     }
 
     // Upstash works with plain rediss://. No extra TLS options needed usually.
-    client = new Redis(url, { maxRetriesPerRequest: 2, enableReadyCheck: false });
+    client = new Redis(url, {
+      maxRetriesPerRequest: 2,
+      enableReadyCheck: false,
+    });
   }
   return client;
 }
 
 async function pingRedis() {
-  try { return (await getRedis().ping()) === "PONG"; } catch { return false; }
+  try {
+    return (await getRedis().ping()) === "PONG";
+  } catch {
+    return false;
+  }
 }
 
 async function incrWithTTL(key, ttlSeconds) {
@@ -27,6 +37,16 @@ async function incrWithTTL(key, ttlSeconds) {
   const v = await r.incr(key);
   if (v === 1) await r.expire(key, ttlSeconds);
   return v;
+}
+
+/**
+ * Simple idempotency helper.
+ * Returns true if key was set (first time), false if duplicate within TTL.
+ */
+async function tryIdempotency(key, ttlSeconds = 600) {
+  const r = getRedis();
+  const ok = await r.set(key, "1", "NX", "EX", ttlSeconds);
+  return ok === "OK";
 }
 
 module.exports = { getRedis, pingRedis, incrWithTTL };
