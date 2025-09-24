@@ -64,7 +64,8 @@ function validateLeadStep1(body) {
   const roleIn = role || legacyType || "host"; // landing default host
   const roles = roleIn === "both" ? ["host", "renter"] : [roleIn];
 
-  if (!roles.every((r) => ["host", "renter"].includes(r))) errors.push("invalid role");
+  if (!roles.every((r) => ["host", "renter"].includes(r)))
+    errors.push("invalid role");
   data.roles = roles;
 
   data.firstName = normalizeStr(body.firstName, 80);
@@ -72,7 +73,8 @@ function validateLeadStep1(body) {
 
   data.lastName = normalizeStr(body.lastName, 80);
   data.email = normalizeStr(body.email, 120)?.toLowerCase();
-  if (!data.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)) errors.push("invalid email");
+  if (!data.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email))
+    errors.push("invalid email");
 
   data.phone = normalizeStr(body.phone, 32);
 
@@ -87,7 +89,8 @@ function validateLeadStep1(body) {
   data.citySlug = normalizeStr(body.citySlug, 64);
 
   // consent
-  const consent = typeof body.consent === "boolean" ? body.consent : !!body.consentMarketing;
+  const consent =
+    typeof body.consent === "boolean" ? body.consent : !!body.consentMarketing;
   if (!consent) errors.push("consent required");
   data.consentMarketing = !!consent;
 
@@ -114,6 +117,12 @@ function validateLeadEnrich(body) {
   const errors = [];
   const data = {};
 
+  // small helper for safe enum clamping
+  const clampEnum = (val, allowed, fallback) => {
+    const x = normalizeStr(val, 32);
+    return allowed.includes(x) ? x : fallback;
+  };
+
   data.captchaToken = normalizeStr(body.captchaToken, 2000);
   if (!data.captchaToken) errors.push("captchaToken required");
   data.honeypot = normalizeStr(body.honeypot || body.website, 200);
@@ -125,6 +134,7 @@ function validateLeadEnrich(body) {
 
   if (hd) {
     const out = {};
+
     if (Array.isArray(hd.locations)) {
       out.locations = hd.locations
         .slice(0, 5)
@@ -135,19 +145,35 @@ function validateLeadEnrich(body) {
         }))
         .filter((l) => l.city || l.zip5);
     }
+
     if (Array.isArray(hd.vehicles)) {
-      out.vehicles = hd.vehicles.slice(0, 20).map((v) => ({
-        year: normalizeStr(v.year, 8),
-        make: normalizeStr(v.make, 40),
-        model: normalizeStr(v.model, 60),
-        bodyType: normalizeStr(v.bodyType, 16),
-        seats: Number(v.seats || 0),
-        transmission: normalizeStr(v.transmission, 10),
-        mileageBand: normalizeStr(v.mileageBand, 16),
-        availability: normalizeStr(v.availability, 16),
-        readiness: normalizeStr(v.readiness, 20),
-      }));
-      // if any vehicles exist, require year/make/model per row (server hard check)
+      out.vehicles = hd.vehicles.slice(0, 20).map((v) => {
+        const year = normalizeStr(v.year, 8);
+        const make = normalizeStr(v.make, 40);
+        const model = normalizeStr(v.model, 60);
+
+        // clamp condition to allowed set with fallback
+        const condition = clampEnum(
+          v.condition,
+          ["Excellent", "Good", "Fair"],
+          "Good"
+        );
+
+        return {
+          year,
+          make,
+          model,
+          bodyType: normalizeStr(v.bodyType, 16),
+          seats: Number(v.seats || 0),
+          transmission: normalizeStr(v.transmission, 10),
+          mileageBand: normalizeStr(v.mileageBand, 16),
+          availability: normalizeStr(v.availability, 16),
+          readiness: normalizeStr(v.readiness, 20),
+          condition,
+        };
+      });
+
+      // require year/make/model for each provided vehicle
       for (const v of out.vehicles) {
         if (!v.year || !v.make || !v.model) {
           errors.push("vehicle requires year/make/model");
@@ -155,16 +181,19 @@ function validateLeadEnrich(body) {
         }
       }
     }
+
     out.insuranceStatus = normalizeStr(hd.insuranceStatus, 16) || "unsure";
     out.handoff = normalizeStr(hd.handoff, 16) || "both";
     out.pricingExpectation = normalizeStr(hd.pricingExpectation, 64);
     out.fleetSize = normalizeStr(hd.fleetSize, 16) || "1";
     out.notes = normalizeStr(hd.notes, 1000);
+
     data.hostDetails = out;
   }
 
   if (rd) {
     const out = {};
+
     if (rd.pickup) {
       out.pickup = {
         city: normalizeStr(rd.pickup.city, 120),
@@ -172,27 +201,37 @@ function validateLeadEnrich(body) {
         zip5: normalizeStr(rd.pickup.zip5, 5),
       };
     }
+
     if (rd.dates) {
       const earliest = normalizeStr(rd.dates.earliestStart, 10);
       const latest = normalizeStr(rd.dates.latestStart, 10);
-      if (earliest && latest && earliest > latest) errors.push("dates invalid: earliest > latest");
+      if (earliest && latest && earliest > latest) {
+        errors.push("dates invalid: earliest > latest");
+      }
       out.dates = {
         earliestStart: earliest,
         latestStart: latest,
-        typicalDurationBand: normalizeStr(rd.dates.typicalDurationBand, 8) || "1-3",
+        typicalDurationBand:
+          normalizeStr(rd.dates.typicalDurationBand, 8) || "1-3",
       };
     }
+
     if (rd.prefs) {
       out.prefs = {
         bodyType: normalizeStr(rd.prefs.bodyType, 32) || "No preference",
         seats: Number(rd.prefs.seats || 0),
-        transmission: normalizeStr(rd.prefs.transmission, 16) || "No preference",
-        extras: Array.isArray(rd.prefs.extras) ? rd.prefs.extras.slice(0, 20).map((x) => normalizeStr(x, 32)) : [],
+        transmission:
+          normalizeStr(rd.prefs.transmission, 16) || "No preference",
+        extras: Array.isArray(rd.prefs.extras)
+          ? rd.prefs.extras.slice(0, 20).map((x) => normalizeStr(x, 32))
+          : [],
       };
     }
+
     out.budgetBand = normalizeStr(rd.budgetBand, 16) || "50_80";
     out.ageBand = normalizeStr(rd.ageBand, 16) || "25_plus";
     out.notes = normalizeStr(rd.notes, 1000);
+
     data.renterDetails = out;
   }
 
