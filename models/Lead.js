@@ -14,6 +14,11 @@ const HostVehicleSchema = new Schema(
     year: String,
     make: String,
     model: String,
+    trim: String,
+    makeNormalized: String,
+    modelNormalized: String,
+    trimNormalized: String,
+
     bodyType: {
       type: String,
       enum: ["Sedan", "SUV", "Truck", "Van", "EV", "Other"],

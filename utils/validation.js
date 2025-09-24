@@ -14,6 +14,19 @@ function normalizeStr(v, max) {
   return s.length > max ? s.slice(0, max) : s;
 }
 
+function titleCaseSmart(s) {
+  if (!s) return s;
+  if (/^[A-Z0-9\-]+$/.test(s) && s.length <= 5) return s;
+  return s
+    .split(/(\s+|\/|-|\+)/)
+    .map((c) =>
+      /^\s+$/.test(c) || ["-", "/", "+"].includes(c)
+        ? c
+        : c.charAt(0).toUpperCase() + c.slice(1).toLowerCase()
+    )
+    .join("");
+}
+
 function hashIp(ip, secret) {
   if (!ip) return "";
   const salt = secret || "ip_salt_default";
@@ -151,6 +164,7 @@ function validateLeadEnrich(body) {
         const year = normalizeStr(v.year, 8);
         const make = normalizeStr(v.make, 40);
         const model = normalizeStr(v.model, 60);
+        const trim = normalizeStr(v.trim, 60); // optional
 
         // clamp condition to allowed set with fallback
         const condition = clampEnum(
@@ -159,10 +173,11 @@ function validateLeadEnrich(body) {
           "Good"
         );
 
-        return {
+        const veh = {
           year,
           make,
           model,
+          trim,
           bodyType: normalizeStr(v.bodyType, 16),
           seats: Number(v.seats || 0),
           transmission: normalizeStr(v.transmission, 10),
@@ -171,6 +186,12 @@ function validateLeadEnrich(body) {
           readiness: normalizeStr(v.readiness, 20),
           condition,
         };
+
+        // Normalized copies (for clean storage / downstream matching)
+        if (veh.make) veh.makeNormalized = titleCaseSmart(veh.make);
+        if (veh.model) veh.modelNormalized = titleCaseSmart(veh.model);
+        if (veh.trim) veh.trimNormalized = titleCaseSmart(veh.trim);
+        return veh;
       });
 
       // require year/make/model for each provided vehicle
