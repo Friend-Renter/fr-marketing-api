@@ -49,4 +49,4 @@ async function tryIdempotency(key, ttlSeconds = 600) {
   return ok === "OK";
 }
 
-module.exports = { getRedis, pingRedis, incrWithTTL };
+module.exports = { getRedis, pingRedis, incrWithTTL, tryIdempotency };

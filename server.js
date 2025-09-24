@@ -25,8 +25,16 @@ const corsOptions = {
     const ok = !origin || allowList.includes(origin);
     cb(ok ? null : new Error("Not allowed by CORS"), ok);
   },
-  methods: ["GET", "POST", "OPTIONS"],
-  allowedHeaders: ["Content-Type"],
+  methods: ["GET", "POST", "PATCH", "OPTIONS"],
+  allowedHeaders: [
+    "Content-Type",
+    "X-Idempotency-Key",
+    "Accept",
+    "Origin",
+    "Referer",
+    // "Authorization", // keep if/when you add auth
+  ],
+  maxAge: 86400, // 24h preflight cache
   optionsSuccessStatus: 204,
 };
 
@@ -40,7 +48,6 @@ app.options(/.*/, cors(corsOptions));
 app.use(express.json({ limit: "50mb" })); // Adjust the limit as needed
 app.use(express.urlencoded({ limit: "50mb", extended: true })); // Adjust the limit as needed
 
-
 // Mount API
 console.log("mounting API routes at /v1");
 app.use("/v1", routes);
@@ -49,7 +56,6 @@ app.use("/v1", routes);
 app.use((req, res) => {
   res.status(404).json({ message: "Route not found." });
 });
-
 
 process.on("SIGINT", async () => {
   console.log("Closing server...");
