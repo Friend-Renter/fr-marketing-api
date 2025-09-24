@@ -86,8 +86,12 @@ function validateLeadStep1(body) {
 
   data.lastName = normalizeStr(body.lastName, 80);
   data.email = normalizeStr(body.email, 120)?.toLowerCase();
-  if (!data.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email))
+  // Safer regex avoids catastrophic backtracking
+  const EMAIL_REGEX = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
+
+  if (!data.email || !EMAIL_REGEX.test(data.email)) {
     errors.push("invalid email");
+  }
 
   data.phone = normalizeStr(body.phone, 32);
 
