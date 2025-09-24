@@ -1,6 +1,6 @@
 // /controllers/vehiclesRoutes.js
 const express = require("express");
-const { getRedis, incrWithTTL } = require("../utils/redis");
+const { incrWithTTL } = require("../utils/redis");
 const carquery = require("../services/carquery");
 const { KEYS, TTL, getCachedJSON, setCachedJSON } = require("../services/vehicleCache");
 

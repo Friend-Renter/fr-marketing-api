@@ -4,16 +4,19 @@ const { getRedis } = require("../utils/redis");
 const NS = process.env.REDIS_NAMESPACE || "fr:dev";
 const KEYS = {
   YEARS: `${NS}:veh:years`,
-  MAKES: (y) => `${NS}:veh:makes:${y}`,
-  MODELS: (y, m) => `${NS}:veh:models:${y}:${(m || "").toLowerCase()}`,
+  MAKES: (y) => `${NS}:veh:makes:${String(y).toLowerCase()}`,
+  MODELS: (y, m) =>
+    `${NS}:veh:models:${String(y).toLowerCase()}:${(m || "").toLowerCase()}`,
   TRIMS: (y, m, mo) =>
-    `${NS}:veh:trims:${y}:${(m || "").toLowerCase()}:${(mo || "").toLowerCase()}`,
+    `${NS}:veh:trims:${y}:${(m || "").toLowerCase()}:${(
+      mo || ""
+    ).toLowerCase()}`,
 };
 
 // TTLs (seconds)
 const TTL = {
   YEARS: 60 * 60 * 24 * 30, // 30 days
-  LISTS: 60 * 60 * 24 * 7,  // 7 days
+  LISTS: 60 * 60 * 24 * 7, // 7 days
 };
 
 async function getCachedJSON(key) {

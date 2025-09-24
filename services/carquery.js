@@ -9,6 +9,8 @@ const BASE = "https://www.carqueryapi.com/api/0.3/";
 function stripPotentialJsonp(txt) {
   // CarQuery can return JSON or JSONP depending on params/proxies.
   // If JSONP, it's like: carquery({...});
+  if (!txt || !txt.trim()) throw new Error("Empty response body from CarQuery");
+  // Occasionally providers wrap with leading whitespace or comments.
   const start = txt.indexOf("{");
   const end = txt.lastIndexOf("}");
   if (start !== -1 && end !== -1) {
@@ -26,7 +28,8 @@ async function carqueryFetch(params) {
   const url = new URL(BASE);
   // CarQuery expects all args in query string, including cmd
   for (const [k, v] of Object.entries(params)) {
-    if (v !== undefined && v !== null && v !== "") url.searchParams.set(k, String(v));
+    if (v !== undefined && v !== null && v !== "")
+      url.searchParams.set(k, String(v));
   }
   // fmt=json isn't documented everywhere, but helps force JSON in some setups.
   url.searchParams.set("fmt", "json");
@@ -90,7 +93,9 @@ module.exports = {
     });
     // Shape: { Makes: [{ make_display, make_is_common, make_country, ... }, ...] }
     const makesRaw = json?.Makes || json?.makes || [];
-    const makes = makesRaw.map((m) => titleCaseSmart(m.make_display || m.make || m.make_name));
+    const makes = makesRaw.map((m) =>
+      titleCaseSmart(m.make_display || m.make || m.make_name)
+    );
     return uniqSorted(makes);
   },
 
@@ -104,7 +109,9 @@ module.exports = {
     });
     // Shape: { Models: [{ model_name, model_make_id, ... }, ...] }
     const modelsRaw = json?.Models || json?.models || [];
-    const models = modelsRaw.map((m) => titleCaseSmart(m.model_name || m.model));
+    const models = modelsRaw.map((m) =>
+      titleCaseSmart(m.model_name || m.model)
+    );
     return uniqSorted(models);
   },
 
@@ -121,7 +128,9 @@ module.exports = {
     // Shape: { Trims: [{ model_trim, model_name, model_make_id, ... }, ...] }
     const trimsRaw = json?.Trims || json?.trims || [];
     // Prefer concise 'model_trim'. If missing, fall back to model_name (rare).
-    const trims = trimsRaw.map((t) => titleCaseSmart(t.model_trim || t.model_name || t.trim));
+    const trims = trimsRaw.map((t) =>
+      titleCaseSmart(t.model_trim || t.model_name || t.trim)
+    );
     return uniqSorted(trims);
   },
 
