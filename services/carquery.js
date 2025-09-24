@@ -123,15 +123,45 @@ module.exports = {
       make,
       model,
       sold_in_us: 1,
-      full_results: 0,
+      full_results: 1,
     });
-    // Shape: { Trims: [{ model_trim, model_name, model_make_id, ... }, ...] }
+    // Common CarQuery fields (varies by year/make/model):
+    // - model_trim (string)
+    // - model_body or body (e.g., "Sedan", "SUV")
+    // - model_seats or seats (number-like)
+    // - model_transmission_type or model_transmission (string)
     const trimsRaw = json?.Trims || json?.trims || [];
-    // Prefer concise 'model_trim'. If missing, fall back to model_name (rare).
-    const trims = trimsRaw.map((t) =>
-      titleCaseSmart(t.model_trim || t.model_name || t.trim)
-    );
-    return uniqSorted(trims);
+    const specByTrim = {};
+    const names = [];
+    for (const t of trimsRaw) {
+      const nameRaw = t.model_trim || t.model_name || t.trim || "";
+      const name = titleCaseSmart(nameRaw);
+      if (!name) continue;
+      names.push(name);
+
+      const body = t.model_body || t.body || t.model_body_type || undefined;
+      const seatsRaw = t.model_seats ?? t.seats ?? t.model_seats_num;
+      const seatsNum = Number.isFinite(Number(seatsRaw))
+        ? Number(seatsRaw)
+        : undefined;
+      const trans =
+        t.model_transmission_type ||
+        t.model_transmission ||
+        t.transmission ||
+        undefined;
+
+      const spec = {};
+      if (body) spec.bodyType = titleCaseSmart(String(body));
+      if (seatsNum) spec.seats = seatsNum;
+      if (trans) {
+        // normalize transmission label to your enum: "Auto" | "Manual"
+        const tl = String(trans).toLowerCase();
+        spec.transmission = tl.includes("man") ? "Manual" : "Auto";
+      }
+      if (Object.keys(spec).length) specByTrim[name] = spec;
+    }
+    const trims = uniqSorted(names);
+    return { trims, specByTrim };
   },
 
   titleCaseSmart,

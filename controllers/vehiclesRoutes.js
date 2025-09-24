@@ -2,7 +2,12 @@
 const express = require("express");
 const { incrWithTTL } = require("../utils/redis");
 const carquery = require("../services/carquery");
-const { KEYS, TTL, getCachedJSON, setCachedJSON } = require("../services/vehicleCache");
+const {
+  KEYS,
+  TTL,
+  getCachedJSON,
+  setCachedJSON,
+} = require("../services/vehicleCache");
 
 const router = express.Router();
 
@@ -26,7 +31,9 @@ function bad(res, msg) {
 async function rateLimit(req, res, next) {
   try {
     const ip = getClientIp(req) || "unknown";
-    const key = `${process.env.REDIS_NAMESPACE || "fr:dev"}:rl:veh:${req.path}:ip:${ip}:1m`;
+    const key = `${process.env.REDIS_NAMESPACE || "fr:dev"}:rl:veh:${
+      req.path
+    }:ip:${ip}:1m`;
     const v = await incrWithTTL(key, 60);
     // Very generous; these endpoints are lightweight + cached
     if (v > 60) return res.status(429).json({ error: "Too many requests" });
@@ -105,11 +112,19 @@ router.get("/trims", rateLimit, async (req, res) => {
   try {
     const key = KEYS.TRIMS(year, make, model);
     const cached = await getCachedJSON(key);
-    if (cached) return ok(res, { trims: cached }, "hit");
+    if (cached) return ok(res, cached, "hit");
 
-    const trims = await carquery.getTrims({ year, make, model });
-    await setCachedJSON(key, trims, TTL.LISTS);
-    return ok(res, { trims }, "miss");
+    const { trims, specByTrim } = await carquery.getTrims({
+      year,
+      make,
+      model,
+    });
+    const payload =
+      specByTrim && Object.keys(specByTrim).length
+        ? { trims, specByTrim }
+        : { trims };
+    await setCachedJSON(key, payload, TTL.LISTS);
+    return ok(res, payload, "miss");
   } catch (e) {
     console.error("trims error", e.message);
     return ok(res, { trims: [] }, "fallback");
