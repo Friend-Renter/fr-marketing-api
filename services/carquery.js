@@ -72,6 +72,32 @@ function uniqSorted(arr) {
   );
 }
 
+// Add near top
+function mapBodyTypeToEnum(raw) {
+  if (!raw) return undefined;
+  const s = String(raw).toLowerCase();
+
+  if (s.includes("suv") || s.includes("sport utility")) return "SUV";
+  if (s.includes("truck") || s.includes("pickup")) return "Truck";
+  if (s.includes("van") || s.includes("minivan")) return "Van";
+  // Electric hints; if CarQuery exposes electric in body string
+  if (s.includes("electric") || s.includes("bev") || s.includes("ev"))
+    return "EV";
+
+  // Most EPA/market classes → treat as Sedan (also hatchback/coupe/wagon/convertible)
+  if (
+    s.includes("car") ||
+    s.includes("sedan") ||
+    s.includes("hatchback") ||
+    s.includes("coupe") ||
+    s.includes("wagon") ||
+    s.includes("convertible")
+  )
+    return "Sedan";
+
+  return "Other";
+}
+
 module.exports = {
   async getYears() {
     // https://www.carqueryapi.com/api/0.3/?cmd=getYears
@@ -96,7 +122,10 @@ module.exports = {
     const makes = makesRaw.map((m) =>
       titleCaseSmart(m.make_display || m.make || m.make_name)
     );
-    return uniqSorted(makes);
+    // augment makes if missing (helps when CarQuery omits Tesla in some years)
+    const augmented = new Set(makes);
+    if (Number(year) >= 2012) augmented.add("Tesla");
+    return uniqSorted([...augmented]);
   },
 
   async getModels({ year, make }) {
@@ -151,7 +180,9 @@ module.exports = {
         undefined;
 
       const spec = {};
-      if (body) spec.bodyType = titleCaseSmart(String(body));
+
+      const bt = mapBodyTypeToEnum(body);
+      if (bt) spec.bodyType = bt;
       if (seatsNum) spec.seats = seatsNum;
       if (trans) {
         // normalize transmission label to your enum: "Auto" | "Manual"
